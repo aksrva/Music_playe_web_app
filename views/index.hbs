@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Music Player</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+    <div class="container">
+        <div class="music-player">
+            <div class="song-title">
+                <marquee direction="left" id="song-title">
+                    Fitoor song
+                </marquee>
+            </div>
+            <div class="song-image">
+                <img id="song-img" src="img/Fitoor-Song.jpg" alt="">
+            </div>
+            <div id="wave">
+                <img src="icons/wave-sound.webp" alt="">
+                <img src="icons/wave-sound.webp" alt="">
+            </div>
+            <div class="seekbar">
+                <span id="complete_duration">00:00</span>
+                <input type="range" name="seekbar" id="seekslider" min="0" step="0.1" value="0" onchange="songTime();">
+                <span id="total_duration">00:00</span>
+            </div>
+            <div class="player-controls">
+                <button id="prev" title="prev"><img src="icons/next-prev.png" alt=""
+                        style="transform: rotate(180deg);"></button>
+                <button id="play" title="play"><img src="icons/play.png" alt=""></button>
+                <button id="next" title="next"><img src="icons/next-prev.png" alt=""></button>
+            </div>
+            <div class="volume">
+                <img class="sound-icon" src="icons/sound.jfif" alt="">
+                <input type="range" name="volume" id="volume" min="0" step="0.01" max="1" value="0.25"
+                    onchange="volume();">
+            </div>
+        </div>
+    </div>
+    <audio id="song_player">
+        <source id="music" src="music/fitoor-song.mp3" type="audio/mp3">
+    </audio>
+    <footer>
+        Designed/Created By - <a href="https://lapmos.com">lapmos</a>
+    </footer>
+    <script>
+        let song = 0;
+        let total_duration = 0;
+        let song_player = document.getElementById("song_player");
+        let song_title = document.getElementById("song-title");
+        let song_image = document.getElementById("song-img");
+        let play = document.getElementById("play");
+        let next = document.getElementById("next");
+        let prev = document.getElementById("prev");
+        let music = document.getElementById("music");
+        let volu = document.getElementById("volume").value;
+        let seekslider = document.getElementById("seekslider");
+        song_player.volume = 0.25;
+        song_player.addEventListener("timeupdate", seektimeupdate, false);
+        song_player.addEventListener("loadedmetadata", function () {
+            seekslider.setAttribute("max", song_player.duration);
+            total_duration = song_player.duration;
+            let m = Math.floor(total_duration / 60);
+            m = m < 10 ? "0" + m : m;
+            let s = Math.floor(total_duration - Math.floor(total_duration / 60) * 60);
+            s = s < 10 ? "0" + s : s;
+            time = m + ":" + s;
+            if (time === "NaN:NaN") {
+                document.getElementById("total_duration").innerText = "00:00";
+            } else {
+                document.getElementById("total_duration").innerText = m + ":" + s;
+            }
+        })
+        function volume() {
+            let val = document.getElementById("volume").value;
+            song_player.volume = val;
+        }
+        function up_down_volume(keyCode) {
+            if (keyCode === 38) {
+                let uv = parseFloat(document.getElementById("volume").value) + 0.01;
+                if (uv <= 1) {
+                    document.getElementById("volume").value = uv;
+                    volume();
+                }
+            }
+            else if (keyCode === 40) {
+                let uv = parseFloat(document.getElementById("volume").value) - 0.01;
+                if (uv >= 0) {
+                    document.getElementById("volume").value = uv;
+                    volume();
+                }
+            }
+        }
+        function songTime() {
+            song_player.currentTime = seekslider.value;
+        }
+        function seektimeupdate() {
+            let nt = song_player.currentTime * (total_duration / song_player.duration);
+            let m = Math.floor(nt / 60);
+            m = m < 10 ? "0" + m : m;
+            let s = Math.floor(nt - Math.floor(nt / 60) * 60);
+            s = s < 10 ? "0" + s : s;
+            time = m + ":" + s;
+            if (time === "NaN:NaN") {
+                document.getElementById("complete_duration").innerText = "00:00";
+            } else {
+                document.getElementById("complete_duration").innerText = m + ":" + s;
+            }
+            seekslider.value = nt;
+            if (total_duration == nt) {
+                song = song + 1;
+                changeSong(song);
+            }
+        }
+        function play_pause(songs) {
+            if (song_player.paused) {
+                song_title.innerText = songs[song].title;
+                song_player.play();
+                play.innerHTML = '<img src="icons/pause.png">';
+                song_image.classList.add("animation");
+                play.title = "pause";
+                document.getElementById("wave").style.opacity = "1";
+                if (songs.length - 1 == song) {
+                    next.disabled = true;
+                }
+                else if (song == 0) {
+                    prev.disabled = true;
+                } else {
+                    next.disabled = false;
+                    prev.disabled = false;
+                }
+            } else {
+                song_player.pause();
+                play.innerHTML = '<img src="icons/play.png">';
+                song_image.classList.remove("animation")
+                play.title = "play";
+                document.getElementById("wave").style.opacity = "0";
+
+            }
+        }
+
+        function changeSong(song) {
+            song_player.pause();
+            fetch("http://localhost:8090/songs/musics")
+                .then(res => res.json())
+                .then((resData) => {
+                    if (resData.length == song) {
+                        play.innerHTML = '<img src="icons/play.png">';
+                        song_image.classList.remove("animation")
+                        play.title = "play";
+                        document.getElementById("wave").style.opacity = "0";
+                    }
+                    song_player.load();
+                    song_image.src = "img/" + resData[song].image;
+                    music.src = "music/" + resData[song].song;
+                    play_pause(resData);
+                })
+                .catch(err => console.log(err));
+
+        }
+
+        let playSong = () => {
+            fetch("http://localhost:8090/songs/musics")
+                .then(res => res.json())
+                .then((resData) => {
+                    if (resData.length == song) {
+                        song = song - 1;
+                    }
+                    music.src = "music/" + resData[song].song;
+                    play_pause(resData);
+                })
+                .catch(err => console.log(err));
+        }
+        function nextSong() {
+            song = song + 1;
+            changeSong(song);
+        }
+        function prevSong() {
+            song = song - 1;
+            changeSong(song);
+        }
+
+        play.onclick = () => {
+            playSong();
+        }
+        next.onclick = () => {
+            nextSong();
+        }
+        prev.onclick = () => {
+            prevSong();
+        }
+
+
+        document.addEventListener('keydown', (e) => {
+            if (e.keyCode === 32) {
+                playSong();
+            }
+            else if (e.keyCode === 39) {
+                nextSong();
+            }
+            else if (e.keyCode === 37) {
+                prevSong();
+            } else if (e.keyCode === 38) {
+                up_down_volume(38);
+            }
+            else if (e.keyCode === 40) {
+                up_down_volume(40);
+            }
+        });
+    </script>
+</body>
+
+</html>
